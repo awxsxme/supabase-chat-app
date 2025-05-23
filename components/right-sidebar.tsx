@@ -31,11 +31,6 @@ export default function RightSidebar() {
           </li>
         </ul>
       </nav>
-
-      {/* Logout button at the bottom */}
-      <div className="flex justify-center pb-6">
-        <LogoutButton />
-      </div>
     </aside>
   )
 }

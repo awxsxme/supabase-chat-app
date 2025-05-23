@@ -13,14 +13,14 @@ interface ChatMessagesProps {
 export default function ChatMessages({ chatId, isLoading: headerLoading = false }: ChatMessagesProps) {
   const { user } = useAuth()
   const messagesContainerRef = useRef<HTMLDivElement>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>
 
-  const { messages, isLoading, error, setMessagesEndRef } = useRealtimeMessages(chatId, user?.id)
+  const { messages, isLoading, error, scrollToBottom, addMessageToState } = useRealtimeMessages(chatId, user?.id, messagesEndRef)
 
   // Set the messages end ref for the hook to use
   useEffect(() => {
-    setMessagesEndRef(messagesEndRef.current)
-  }, [setMessagesEndRef])
+    scrollToBottom()
+  }, [scrollToBottom])
 
   if (isLoading || headerLoading) {
     return (

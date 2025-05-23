@@ -15,12 +15,22 @@ export interface Message {
   }
 }
 
-export function useRealtimeMessages(chatId: string, currentUserId?: string) {
+export function useRealtimeMessages(chatId: string, currentUserId?: string, externalRef?: React.RefObject<HTMLDivElement>) {
+
+  const messagesEndRef = externalRef ?? useRef<HTMLDivElement | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const messagesEndRef = useRef<HTMLDivElement | null>(null)
+  
   const isInitialLoad = useRef(true)
+
+  const addMessageToState = (newMessage: Message) => {
+    setMessages((prev) => {
+      const exists = prev.some((msg) => msg.id === newMessage.id)
+      if (exists) return prev
+      return [...prev, newMessage]
+    })
+  }
 
   // Set messages end ref
   const setMessagesEndRef = (ref: HTMLDivElement | null) => {
@@ -88,52 +98,48 @@ export function useRealtimeMessages(chatId: string, currentUserId?: string) {
     console.log("Setting up real-time subscription for chat:", chatId)
 
     const channel = supabase
-      .channel(`messages:${chatId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `chat_id=eq.${chatId}`,
-        },
-        async (payload) => {
-          console.log("New message received:", payload.new)
+    .channel(`messages:chat-${chatId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "messages",
+        filter: `chat_id=eq.${chatId}`,
+      },
+      async (payload) => {
+        const newMessage = payload.new as Message;
 
-          const newMessage = payload.new as Message
+        // ✅ IMPORTANT: Ensure the message is for the currently active chat
+        if (newMessage.chat_id !== chatId) return;
 
-          // Fetch user data for the new message
-          const { data: userData, error: userError } = await supabase
-            .from("users")
-            .select("username, avatar_url")
-            .eq("id", newMessage.sender_id)
-            .single()
+        const { data: userData } = await supabase
+          .from("users")
+          .select("username, avatar_url")
+          .eq("id", newMessage.sender_id)
+          .single();
 
-          if (userError) {
-            console.error("Error fetching user data for message:", userError)
-          }
+        const messageWithUser = {
+          ...newMessage,
+          users: userData || { username: "Unknown", avatar_url: null },
+        };
 
-          const messageWithUser = {
-            ...newMessage,
-            users: userData || { username: "Unknown", avatar_url: null },
-          }
+        setMessages((prev) => {
+          const exists = prev.some((msg) => msg.id === newMessage.id);
+          return exists ? prev : [...prev, messageWithUser];
+        });
 
-          // Add message to state if it doesn't already exist
-          setMessages((prev) => {
-            // Check if message already exists to prevent duplicates
-            const exists = prev.some((msg) => msg.id === newMessage.id)
-            if (exists) return prev
+        scrollToBottom();
+      }
+    );
 
-            return [...prev, messageWithUser]
-          })
-
-          // Scroll to bottom when new message arrives
-          scrollToBottom()
-        },
-      )
-      .subscribe((status) => {
-        console.log(`Subscription status for chat ${chatId}:`, status)
-      })
+    channel.subscribe((status) => {
+      if (status === "SUBSCRIBED") {
+        console.log("✅ Realtime subscription active for chat:", chatId);
+      } else {
+        console.warn("⚠️ Subscription status:", status);
+      }
+    });
 
     return () => {
       console.log("Cleaning up subscription for chat:", chatId)
@@ -175,7 +181,7 @@ export function useRealtimeMessages(chatId: string, currentUserId?: string) {
     isLoading,
     error,
     sendMessage,
-    setMessagesEndRef,
     scrollToBottom,
+    addMessageToState,
   }
 }

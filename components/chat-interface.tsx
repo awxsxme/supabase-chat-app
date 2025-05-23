@@ -18,18 +18,78 @@ import {
   MessageSquare,
   Users,
 } from "lucide-react"
+import { useRealtimeMessages } from "@/hooks/use-realtime-messages";
+import { useAuth } from "@/components/providers/auth-provider"
+import { supabase } from "@/lib/supabaseClient";
+import LeftSidebar from "./left-sidebar";
 
 export default function ChatInterface() {
+  const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const [activeChatId, setActiveChatId] = useState("1")
+  const [activeChatId, setActiveChatId] = useState("cccccccc-cccc-cccc-cccc-cccccccccccc")
+  const [chats, setChats] = useState<any[]>([])
 
-  // Simulate scrolling to bottom when component mounts
+  const { user } = useAuth()
+
+  const {
+    messages,
+    isLoading,
+    sendMessage,
+    scrollToBottom,
+    addMessageToState,
+  } = useRealtimeMessages(activeChatId, user?.id, messagesEndRef);
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "auto" })
+    scrollToBottom("auto");
   }, [])
 
+  useEffect(() => {
+    const fetchChats = async () => {
+      console.log("user.id", user?.id);
+      if (!user?.id) return
+
+      console.log("Fetching chats for user:", user.id)
+
+      const { data, error } = await supabase
+      .from("chat_participants")
+      .select(`
+        chat_id,
+        chats (
+          id,
+          title
+        ),
+        users (
+          username,
+          avatar_url
+        )
+      `)
+      .eq("user_id", user.id);
+
+
+      if (error) {
+        console.error("Error fetching chats:", error)
+        return
+      }
+
+      const formattedChats = data.map(participant => ({
+        id: participant.chats.id,
+        title: participant.chats.title,
+        avatar: participant.users.avatar_url,
+        participants: [participant.users.username], // You can extend this if needed
+      }));
+
+      setChats(formattedChats || []);
+
+      if (data?.length) {
+        setActiveChatId(formattedChats[0].id);
+      }
+    }
+
+    fetchChats()
+  }, [user?.id])
+
   // Sample data for demonstration
-  const chats = [
+  /* const chats = [
     {
       id: "1",
       title: "Alice & Bob",
@@ -61,11 +121,11 @@ export default function ChatInterface() {
       participantCount: 6,
       labels: ["Family"],
     },
-  ]
+  ] */
 
   const activeChat = chats.find((chat) => chat.id === activeChatId)
 
-  const messages = [
+  const dummyMessages = [
     {
       id: "1",
       chatId: "1",
@@ -140,8 +200,51 @@ export default function ChatInterface() {
     },
   ]
 
-  const activeMessages = messages.filter((message) => message.chatId === activeChatId)
+    const dummyChats = [
+      {
+        id: "cccccccc-cccc-cccc-cccc-cccccccccccc",
+        title: "Alice & Bob",
+        avatar: "https://i.pravatar.cc/150?u=alice",
+        lastMessage: dummyMessages[dummyMessages.length - 1].content,
+        lastMessageTime: dummyMessages[dummyMessages.length - 1].timestamp,
+        unreadCount: 2,
+        phoneNumber: "+1 234 567 8901",
+        participantCount: 2,
+        labels: ["Demo"],
+      },
+      {
+        id: "2",
+        title: "Work Group",
+        avatar: "https://i.pravatar.cc/150?u=workgroup",
+        lastMessage: "Let's discuss this in our meeting tomorrow.",
+        lastMessageTime: "2025-05-22T09:15:00",
+        unreadCount: 0,
+        phoneNumber: "+1 234 567 8902",
+        participantCount: 5,
+        labels: ["Work", "Important"],
+      },
+      {
+        id: "3",
+        title: "Family Group",
+        avatar: "https://i.pravatar.cc/150?u=familygroup",
+        lastMessage: "Don't forget Mom's birthday this weekend!",
+        lastMessageTime: "2025-05-21T18:30:00",
+        unreadCount: 1,
+        phoneNumber: "+1 234 567 8903",
+        participantCount: 4,
+        labels: ["Family"],
+      },
+    ]
 
+  /* const activeMessages = messages.filter((message) => message.chatId === activeChatId) */
+  const activeMessages = messages.map(msg => ({
+    id: msg.id,
+    chatId: msg.chat_id,
+    sender: msg.sender_id === user?.id ? "me" : "other",
+    senderName: msg.users?.username || "Unknown",
+    content: msg.content,
+    timestamp: msg.created_at,
+  }))
   // Group messages by date
   const groupedMessages: Record<string, typeof messages> = {}
   activeMessages.forEach((message) => {
@@ -157,12 +260,25 @@ export default function ChatInterface() {
     groupedMessages[dateKey].push(message)
   })
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault()
-    // In a real app, this would send the message
-    // For this demo, we just scroll to bottom
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }
+  const handleSendMessage = async () => {
+    if (!input.trim()) return;
+    const result = await sendMessage(input);
+
+    if (result.success && result.data) {
+      const newMessage = result.data[0];
+      addMessageToState({
+        ...newMessage,
+        sender_id: user?.id || "",
+        users: {
+          username: user?.username || "You",
+          avatar_url: user?.avatar_url || null,
+        },
+      });
+    }
+
+    setInput("");
+    scrollToBottom("smooth");
+  };
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString)
@@ -199,10 +315,9 @@ export default function ChatInterface() {
             </button>
           </div>
         </header>
-
         {/* Chat List */}
         <nav className="flex-1 overflow-y-auto">
-          {chats.map((chat) => (
+          {dummyChats.map((chat) => (
             <div
               key={chat.id}
               className={`flex cursor-pointer gap-3 border-b border-gray-100 p-3 hover:bg-gray-50 ${
@@ -395,7 +510,12 @@ export default function ChatInterface() {
               <Paperclip className="h-6 w-6" />
             </button>
 
-            <input type="text" placeholder="Message..." className="flex-1 bg-transparent px-2 py-1 outline-none" />
+            <input type="text" placeholder="Message..." className="flex-1 bg-transparent px-2 py-1 outline-none" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage(e as unknown as React.FormEvent<HTMLFormElement>);
+              }
+            }} />
 
             <button type="submit" className="rounded-full bg-green-500 p-2 text-white hover:bg-green-600">
               <Send className="h-5 w-5" />

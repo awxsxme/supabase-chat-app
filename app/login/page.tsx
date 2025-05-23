@@ -22,7 +22,7 @@ export default function LoginPage() {
         data: { session },
       } = await supabase.auth.getSession()
       if (session) {
-        router.push("/")
+        router.replace("/")
       }
     }
     checkSession()
@@ -33,6 +33,20 @@ export default function LoginPage() {
     setIsLoading(true)
     setError(null)
     setSuccess(null)
+
+    const verifySessionAndRedirect = async () => {
+      for (let i = 0; i < 10; i++) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          console.log("✅ Session confirmed, redirecting");
+          window.location.href = "/";
+          return;
+        }
+        await new Promise((res) => setTimeout(res, 200)); // wait 200ms
+      }
+      console.error("❌ Session cookie did not propagate in time");
+    };
+
 
     try {
       if (isSignUp) {
@@ -59,17 +73,28 @@ export default function LoginPage() {
             } = await supabase.auth.getUser()
 
             if (user) {
-              await supabase.from("users").upsert({
-                id: user.id,
-                email: user.email,
-                username: username || user.email?.split("@")[0],
-                avatar_url: user.user_metadata?.avatar_url ?? `https://i.pravatar.cc/150?u=${user.id}`,
-              })
+              console.log("🧠 Raw Supabase user:", user)
+
+              const userPayload = {
+                id: user?.id,
+                username: username || user?.email?.split("@")[0] || `user_${user?.id?.slice(0, 8) || "unknown"}`,
+              }
+
+              console.log("🔍 Minimal payload to upsert:", userPayload)
+
+              const { error } = await supabase
+                .from("users")
+                .upsert(userPayload, { onConflict: "id" })
+
+              if (error) {
+                console.error("❌ Upsert error:", error.message, error.details)
+                throw error
+              }
             }
 
             if (data.session) {
               setSuccess("Account created successfully! Redirecting...")
-              setTimeout(() => router.push("/"), 1500)
+              verifySessionAndRedirect();
             } else {
               setSuccess("Please check your email to confirm your account")
             }
@@ -91,16 +116,29 @@ export default function LoginPage() {
           } = await supabase.auth.getUser()
 
           if (user) {
-            await supabase.from("users").upsert({
-              id: user.id,
-              email: user.email,
-              username: user.user_metadata?.username || user.email?.split("@")[0],
-              avatar_url: user.user_metadata?.avatar_url ?? `https://i.pravatar.cc/150?u=${user.id}`,
-            })
+            console.log("🧠 Raw Supabase user:", user)
+
+            const userPayload = {
+              id: user?.id,
+              username: user?.email?.split("@")[0] || `user_${user?.id?.slice(0, 8) || "unknown"}`,
+            }
+
+            console.log("🔍 Minimal payload to upsert:", userPayload)
+
+            const { error } = await supabase
+              .from("users")
+              .upsert(userPayload, { onConflict: "id" })
+
+            if (error) {
+              console.error("❌ Upsert error:", error.message, error.details)
+              throw error
+            }
           }
 
-          setSuccess("Login successful! Redirecting...")
-          setTimeout(() => router.push("/"), 1500)
+          setSuccess("Login successful! Redirecting...");
+          
+          verifySessionAndRedirect();
+          
         }
       }
     } catch (error: any) {
@@ -123,6 +161,8 @@ export default function LoginPage() {
           {error && <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-800">{error}</div>}
 
           {success && <div className="mb-4 rounded-md bg-green-50 p-3 text-sm text-green-800">{success}</div>}
+
+          {isLoading && <p className="text-center text-sm text-gray-500 mb-4">Processing login...</p>}
 
           <form onSubmit={handleSubmit}>
             <div className="mb-4">

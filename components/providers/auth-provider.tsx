@@ -37,16 +37,23 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   // Sync user to public.users table
   const syncUserToDatabase = async (user: User) => {
     try {
-      console.log("Syncing user to database:", user.id)
+      console.log("🧠 Raw Supabase user:", user)
 
-      // Upsert user to users table
-      await supabase.from("users").upsert({
-        id: user.id,
-        email: user.email,
-        username: user.user_metadata?.username || user.email?.split("@")[0] || "User",
-        avatar_url: user.user_metadata?.avatar_url ?? `https://i.pravatar.cc/150?u=${user.id}`,
-        updated_at: new Date().toISOString(),
-      })
+      const userPayload = {
+        id: user?.id,
+        username: user?.email?.split("@")[0] || `user_${user?.id?.slice(0, 8) || "unknown"}`,
+      }
+
+      console.log("🔍 Minimal payload to upsert:", userPayload)
+
+      const { error } = await supabase
+        .from("users")
+        .upsert(userPayload, { onConflict: "id" })
+
+      if (error) {
+        console.error("❌ Upsert error:", error.message, error.details)
+        throw error
+      }
 
       // Fetch user profile
       const { data: profile } = await supabase.from("users").select("*").eq("id", user.id).single()

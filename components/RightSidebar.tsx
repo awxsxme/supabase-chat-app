@@ -1,6 +1,19 @@
-import { BarChart2, FileText, FileEdit, Settings } from "lucide-react"
+import { BarChart2, FileText, FileEdit, Settings, LogOut } from "lucide-react"
+import { useRouter } from 'next/navigation'
+import { useAuth } from "./providers/auth-provider";
 
 export default function RightSidebar() {
+
+  const handleLogout = async () => {
+    const { logout } = useAuth();
+    const router = useRouter();
+
+    const confirm = window.confirm('Are you sure you want to logout?')
+    if (confirm) {
+      await logout()
+      router.push('/login')
+    }
+  }
   return (
     <aside className="hidden w-16 border-l border-gray-200 bg-white md:flex">
       <nav className="flex w-full flex-col items-center py-6">
