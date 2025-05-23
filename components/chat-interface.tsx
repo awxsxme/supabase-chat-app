@@ -56,14 +56,18 @@ export default function ChatInterface() {
         chat_id,
         chats (
           id,
-          title
+          title,
+          messages!chats_id (
+            content,
+            created_at
+          )
         ),
         users (
           username,
           avatar_url
         )
       `)
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
 
 
       if (error) {
@@ -123,7 +127,7 @@ export default function ChatInterface() {
     },
   ] */
 
-  const activeChat = chats.find((chat) => chat.id === activeChatId)
+
 
   const dummyMessages = [
     {
@@ -213,7 +217,7 @@ export default function ChatInterface() {
         labels: ["Demo"],
       },
       {
-        id: "2",
+        id: "dddddddd-dddd-dddd-dddd-dddddddddddd",
         title: "Work Group",
         avatar: "https://i.pravatar.cc/150?u=workgroup",
         lastMessage: "Let's discuss this in our meeting tomorrow.",
@@ -224,7 +228,7 @@ export default function ChatInterface() {
         labels: ["Work", "Important"],
       },
       {
-        id: "3",
+        id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
         title: "Family Group",
         avatar: "https://i.pravatar.cc/150?u=familygroup",
         lastMessage: "Don't forget Mom's birthday this weekend!",
@@ -237,6 +241,8 @@ export default function ChatInterface() {
     ]
 
   /* const activeMessages = messages.filter((message) => message.chatId === activeChatId) */
+
+    const activeChat = dummyChats.find((chat) => chat.id === activeChatId)
   const activeMessages = messages.map(msg => ({
     id: msg.id,
     chatId: msg.chat_id,
@@ -315,103 +321,107 @@ export default function ChatInterface() {
             </button>
           </div>
         </header>
-        {/* Chat List */}
-        <nav className="flex-1 overflow-y-auto">
-          {dummyChats.map((chat) => (
-            <div
-              key={chat.id}
-              className={`flex cursor-pointer gap-3 border-b border-gray-100 p-3 hover:bg-gray-50 ${
-                chat.id === activeChatId ? "bg-gray-100" : ""
-              }`}
-              onClick={() => setActiveChatId(chat.id)}
-            >
-              {/* Avatar */}
-              <div className="relative h-12 w-12 flex-shrink-0">
-                {chat.avatar ? (
-                  <img
-                    src={chat.avatar || "/placeholder.svg"}
-                    alt={chat.title}
-                    className="h-full w-full rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center rounded-full bg-gray-300 text-white">
-                    {chat.title.charAt(0)}
-                  </div>
-                )}
-                {chat.unreadCount > 0 && (
-                  <div className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-xs text-white">
-                    {chat.unreadCount}
-                  </div>
-                )}
-              </div>
 
-              {/* Chat Info */}
-              <div className="flex-1 overflow-hidden">
-                <div className="flex items-center justify-between">
-                  <h3 className="truncate font-medium">{chat.title}</h3>
-                  <span className="text-xs text-gray-500">{formatDate(chat.lastMessageTime)}</span>
+        <div className="flex">
+          {/* Navigation sidebar */}
+          <div className="flex flex-col w-[16px] h-full m-4 border-t border-gray-200 px-2 py-3">
+            <ul className="flex flex-col items-center gap-6">
+              <li>
+                <button className="rounded-full p-1 text-gray-500 hover:bg-gray-100">
+                  <Home className="h-6 w-6" />
+                </button>
+              </li>
+              <li>
+                <button className="rounded-full p-1 text-green-600 hover:bg-gray-100">
+                  <MessageSquare className="h-6 w-6" />
+                </button>
+              </li>
+              <li>
+                <button className="rounded-full p-1 text-gray-500 hover:bg-gray-100">
+                  <Users className="h-6 w-6" />
+                </button>
+              </li>
+              <li>
+                <button className="rounded-full p-1 text-gray-500 hover:bg-gray-100">
+                  <Settings className="h-6 w-6" />
+                </button>
+              </li>
+            </ul>
+          </div>
+          {/* Chat List */}
+          <nav className="flex-1 overflow-y-auto">
+            {dummyChats.map((chat) => (
+              <div
+                key={chat.id}
+                className={`flex cursor-pointer gap-3 border-b border-gray-100 p-3 hover:bg-gray-50 ${
+                  chat.id === activeChatId ? "bg-gray-100" : ""
+                }`}
+                onClick={() => setActiveChatId(chat.id)}
+              >
+                {/* Avatar */}
+                <div className="relative h-12 w-12 flex-shrink-0">
+                  {chat.avatar ? (
+                    <img
+                      src={chat.avatar || "/placeholder.svg"}
+                      alt={chat.title}
+                      className="h-full w-full rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center rounded-full bg-gray-300 text-white">
+                      {chat.title.charAt(0)}
+                    </div>
+                  )}
+                  {chat.unreadCount > 0 && (
+                    <div className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-green-500 text-xs text-white">
+                      {chat.unreadCount}
+                    </div>
+                  )}
                 </div>
 
-                <p className="mt-1 truncate text-sm text-gray-600">{chat.lastMessage}</p>
+                {/* Chat Info */}
+                <div className="flex-1 overflow-hidden">
+                  <div className="flex items-center justify-between">
+                    <h3 className="truncate font-medium">{chat.title}</h3>
+                    <span className="text-xs text-gray-500">{formatDate(chat.lastMessageTime)}</span>
+                  </div>
 
-                {/* Phone number */}
-                <div className="mt-1 flex items-center gap-1 text-xs text-gray-500">
-                  <span>{chat.phoneNumber}</span>
-                  {chat.participantCount && <span>+{chat.participantCount}</span>}
+                  <p className="mt-1 truncate text-sm text-gray-600">{chat.lastMessage}</p>
+
+                  {/* Phone number */}
+                  <div className="mt-1 flex items-center gap-1 text-xs text-gray-500">
+                    <span>{chat.phoneNumber}</span>
+                    {chat.participantCount && <span>+{chat.participantCount}</span>}
+                  </div>
+                </div>
+
+                {/* Labels */}
+                <div className="flex flex-col items-end gap-1 self-center">
+                  {chat.labels &&
+                    chat.labels.map((label, index) => (
+                      <span
+                        key={index}
+                        className={`rounded px-1.5 py-0.5 text-xs ${
+                          label === "Demo"
+                            ? "bg-orange-100 text-orange-800"
+                            : label === "Work"
+                              ? "bg-blue-100 text-blue-800"
+                              : label === "Family"
+                                ? "bg-green-100 text-green-800"
+                                : label === "Important"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {label}
+                      </span>
+                    ))}
                 </div>
               </div>
+            ))}
+          </nav>
+        </div>
 
-              {/* Labels */}
-              <div className="flex flex-col items-end gap-1 self-center">
-                {chat.labels &&
-                  chat.labels.map((label, index) => (
-                    <span
-                      key={index}
-                      className={`rounded px-1.5 py-0.5 text-xs ${
-                        label === "Demo"
-                          ? "bg-orange-100 text-orange-800"
-                          : label === "Work"
-                            ? "bg-blue-100 text-blue-800"
-                            : label === "Family"
-                              ? "bg-green-100 text-green-800"
-                              : label === "Important"
-                                ? "bg-red-100 text-red-800"
-                                : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {label}
-                    </span>
-                  ))}
-              </div>
-            </div>
-          ))}
-        </nav>
-
-        {/* Navigation Footer */}
-        <footer className="border-t border-gray-200 px-2 py-3">
-          <ul className="flex flex-col items-center gap-6">
-            <li>
-              <button className="rounded-full p-1 text-gray-500 hover:bg-gray-100">
-                <Home className="h-6 w-6" />
-              </button>
-            </li>
-            <li>
-              <button className="rounded-full p-1 text-green-600 hover:bg-gray-100">
-                <MessageSquare className="h-6 w-6" />
-              </button>
-            </li>
-            <li>
-              <button className="rounded-full p-1 text-gray-500 hover:bg-gray-100">
-                <Users className="h-6 w-6" />
-              </button>
-            </li>
-            <li>
-              <button className="rounded-full p-1 text-gray-500 hover:bg-gray-100">
-                <Settings className="h-6 w-6" />
-              </button>
-            </li>
-          </ul>
-        </footer>
+        
       </aside>
 
       {/* Chat Window */}

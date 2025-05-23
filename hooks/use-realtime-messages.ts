@@ -46,8 +46,10 @@ export function useRealtimeMessages(chatId: string, currentUserId?: string, exte
 
   // Fetch initial messages
   useEffect(() => {
+    if (!chatId) return;
+    let isMounted = true
+
     const fetchMessages = async () => {
-      if (!chatId) return
 
       setIsLoading(true)
       setError(null)
@@ -69,18 +71,30 @@ export function useRealtimeMessages(chatId: string, currentUserId?: string, exte
 
         if (error) throw error
 
+        if (isMounted) {
+          setMessages(data || [])
+          isInitialLoad.current = true
+        }
+
         console.log(`Retrieved ${data?.length || 0} messages`)
         setMessages(data || [])
         isInitialLoad.current = true
       } catch (error: any) {
-        console.error("Error fetching messages:", error)
-        setError(error.message)
+        if (isMounted) {
+          setError(error.message)
+        }
       } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsLoading(false)
+        }
       }
     }
 
-    fetchMessages()
+    fetchMessages();
+
+    return () => {
+      isMounted = false
+    }
   }, [chatId])
 
   // Auto-scroll to bottom on initial load
